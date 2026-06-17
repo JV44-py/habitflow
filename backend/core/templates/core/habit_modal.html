@@ -1,0 +1,288 @@
+<!-- ═══════════════════════════════
+     Habit Create / Edit Modal
+═══════════════════════════════ -->
+<div class="modal-overlay" id="habit-modal-overlay" onclick="closeHabitModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="habit-modal-title">New Habit</span>
+      <button class="btn btn-ghost btn-icon btn-sm" onclick="closeHabitModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="habit-form" onsubmit="submitHabit(event)">
+        <input type="hidden" id="habit-edit-id"/>
+
+        <!-- Title & Icon row -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <div style="flex:0 0 auto;">
+            <label class="form-label">Icon</label>
+            <div style="width:52px;height:42px;background:var(--bg-input);border:1.5px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;" onclick="toggleIconPicker()" id="icon-display">✅</div>
+          </div>
+          <div style="flex:1">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Habit Name *</label>
+              <input type="text" id="habit-title" class="form-input" placeholder="e.g. Morning run, Read 30 min…" required/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Icon picker dropdown -->
+        <div id="icon-grid" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:16px;flex-wrap:wrap;gap:6px;">
+          <span class="icon-opt" onclick="selectIcon('✅')">✅</span>
+          <span class="icon-opt" onclick="selectIcon('🏃')">🏃</span>
+          <span class="icon-opt" onclick="selectIcon('🧘')">🧘</span>
+          <span class="icon-opt" onclick="selectIcon('📚')">📚</span>
+          <span class="icon-opt" onclick="selectIcon('💧')">💧</span>
+          <span class="icon-opt" onclick="selectIcon('😴')">😴</span>
+          <span class="icon-opt" onclick="selectIcon('🍎')">🍎</span>
+          <span class="icon-opt" onclick="selectIcon('💼')">💼</span>
+          <span class="icon-opt" onclick="selectIcon('🎨')">🎨</span>
+          <span class="icon-opt" onclick="selectIcon('👥')">👥</span>
+          <span class="icon-opt" onclick="selectIcon('💰')">💰</span>
+          <span class="icon-opt" onclick="selectIcon('🌿')">🌿</span>
+          <span class="icon-opt" onclick="selectIcon('🎯')">🎯</span>
+          <span class="icon-opt" onclick="selectIcon('💪')">💪</span>
+          <span class="icon-opt" onclick="selectIcon('🧠')">🧠</span>
+          <span class="icon-opt" onclick="selectIcon('🚶')">🚶</span>
+          <span class="icon-opt" onclick="selectIcon('📖')">📖</span>
+          <span class="icon-opt" onclick="selectIcon('🎵')">🎵</span>
+          <span class="icon-opt" onclick="selectIcon('🌅')">🌅</span>
+          <span class="icon-opt" onclick="selectIcon('🏋️')">🏋️</span>
+          <span class="icon-opt" onclick="selectIcon('🚴')">🚴</span>
+          <span class="icon-opt" onclick="selectIcon('🏊')">🏊</span>
+          <span class="icon-opt" onclick="selectIcon('🖊️')">🖊️</span>
+          <span class="icon-opt" onclick="selectIcon('🌱')">🌱</span>
+          <span class="icon-opt" onclick="selectIcon('🔥')">🔥</span>
+          <span class="icon-opt" onclick="selectIcon('⭐')">⭐</span>
+          <span class="icon-opt" onclick="selectIcon('🏆')">🏆</span>
+          <span class="icon-opt" onclick="selectIcon('🎉')">🎉</span>
+          <span class="icon-opt" onclick="selectIcon('💡')">💡</span>
+          <span class="icon-opt" onclick="selectIcon('🦷')">🦷</span>
+          <span class="icon-opt" onclick="selectIcon('🛁')">🛁</span>
+          <span class="icon-opt" onclick="selectIcon('☕')">☕</span>
+          <span class="icon-opt" onclick="selectIcon('🥗')">🥗</span>
+          <span class="icon-opt" onclick="selectIcon('🧹')">🧹</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="habit-desc" class="form-textarea" placeholder="Why is this habit important to you?" style="min-height:64px;"></textarea>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="habit-category" class="form-select">
+              <option value="">None</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Difficulty</label>
+            <select id="habit-difficulty" class="form-select">
+              <option value="easy">Easy (+10 XP)</option>
+              <option value="medium" selected>Medium (+20 XP)</option>
+              <option value="hard">Hard (+35 XP)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Routine</label>
+            <select id="habit-routine" class="form-select">
+              <option value="morning">🌅 Morning</option>
+              <option value="afternoon">☀️ Afternoon</option>
+              <option value="evening">🌙 Evening</option>
+              <option value="anytime" selected>⭐ Anytime</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Frequency</label>
+            <select id="habit-frequency" class="form-select">
+              <option value="daily" selected>Every day</option>
+              <option value="weekdays">Weekdays only</option>
+              <option value="weekends">Weekends only</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Color swatches (static) -->
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="color-swatches">
+            <div class="color-swatch" data-color="#6366f1" onclick="selectColor('#6366f1',this)" style="background:#6366f1;"></div>
+            <div class="color-swatch" data-color="#10b981" onclick="selectColor('#10b981',this)" style="background:#10b981;"></div>
+            <div class="color-swatch" data-color="#f59e0b" onclick="selectColor('#f59e0b',this)" style="background:#f59e0b;"></div>
+            <div class="color-swatch" data-color="#ef4444" onclick="selectColor('#ef4444',this)" style="background:#ef4444;"></div>
+            <div class="color-swatch" data-color="#3b82f6" onclick="selectColor('#3b82f6',this)" style="background:#3b82f6;"></div>
+            <div class="color-swatch" data-color="#8b5cf6" onclick="selectColor('#8b5cf6',this)" style="background:#8b5cf6;"></div>
+            <div class="color-swatch" data-color="#ec4899" onclick="selectColor('#ec4899',this)" style="background:#ec4899;"></div>
+            <div class="color-swatch" data-color="#14b8a6" onclick="selectColor('#14b8a6',this)" style="background:#14b8a6;"></div>
+            <div class="color-swatch" data-color="#f97316" onclick="selectColor('#f97316',this)" style="background:#f97316;"></div>
+            <div class="color-swatch" data-color="#64748b" onclick="selectColor('#64748b',this)" style="background:#64748b;"></div>
+          </div>
+        </div>
+
+        <!-- Reminder -->
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm);">
+          <input type="checkbox" id="habit-reminder" style="accent-color:var(--accent);width:16px;height:16px;"/>
+          <label for="habit-reminder" style="font-size:.875rem;font-weight:500;flex:1;cursor:pointer;">Enable reminder</label>
+          <input type="time" id="habit-reminder-time" class="form-input" style="width:120px;padding:6px 10px;" value="07:00"/>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeHabitModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="btn-delete-habit" style="display:none;" onclick="deleteCurrentHabit()">
+        <i class="fa fa-trash"></i> Delete
+      </button>
+      <button class="btn btn-primary" onclick="submitHabit(event)" id="btn-save-habit">
+        <i class="fa fa-check"></i> Save Habit
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.icon-opt {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 6px; font-size: 1.2rem;
+  transition: background .15s;
+}
+.icon-opt:hover { background: var(--bg-hover); }
+.color-swatch {
+  width: 28px; height: 28px; border-radius: 50%;
+  cursor: pointer; border: 2px solid transparent;
+  transition: transform .15s, border-color .15s;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.selected { border-color: var(--text-primary); transform: scale(1.2); }
+</style>
+
+<script>
+let selectedIcon  = '✅';
+let selectedColor = '#6366f1';
+let categoryCache = [];
+
+async function openHabitModal(habit = null) {
+  // Load categories into select
+  if (!categoryCache.length) {
+    try { categoryCache = await API.categories.list(); } catch(e) { categoryCache = []; }
+  }
+  const catSel = document.getElementById('habit-category');
+  catSel.innerHTML = '<option value="">None</option>' +
+    categoryCache.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+
+  document.getElementById('habit-modal-title').textContent  = habit ? 'Edit Habit' : 'New Habit';
+  document.getElementById('btn-delete-habit').style.display = habit ? '' : 'none';
+
+  if (habit) {
+    document.getElementById('habit-edit-id').value    = habit.id;
+    document.getElementById('habit-title').value      = habit.title;
+    document.getElementById('habit-desc').value       = habit.description || '';
+    document.getElementById('habit-category').value   = habit.category || '';
+    document.getElementById('habit-difficulty').value = habit.difficulty;
+    document.getElementById('habit-routine').value    = habit.routine;
+    document.getElementById('habit-frequency').value  = habit.frequency;
+    document.getElementById('habit-reminder').checked = habit.reminder_enabled;
+    if (habit.reminder_time) document.getElementById('habit-reminder-time').value = habit.reminder_time.slice(0,5);
+    selectIcon(habit.icon || '✅');
+    selectColor(habit.color || '#6366f1');
+  } else {
+    document.getElementById('habit-form').reset();
+    document.getElementById('habit-edit-id').value    = '';
+    document.getElementById('habit-difficulty').value = 'medium';
+    document.getElementById('habit-routine').value    = 'anytime';
+    document.getElementById('habit-frequency').value  = 'daily';
+    selectIcon('✅');
+    selectColor('#6366f1');
+  }
+
+  document.getElementById('habit-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('habit-title').focus(), 200);
+}
+
+function closeHabitModal(e) {
+  if (e && e.target !== document.getElementById('habit-modal-overlay')) return;
+  document.getElementById('habit-modal-overlay').classList.remove('open');
+  document.getElementById('icon-grid').style.display = 'none';
+}
+
+function selectIcon(icon) {
+  selectedIcon = icon;
+  document.getElementById('icon-display').textContent = icon;
+  document.getElementById('icon-grid').style.display  = 'none';
+}
+
+function toggleIconPicker() {
+  const grid = document.getElementById('icon-grid');
+  grid.style.display = (grid.style.display === 'none' || !grid.style.display) ? 'flex' : 'none';
+}
+
+function selectColor(color, el) {
+  selectedColor = color;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+  else {
+    const match = document.querySelector(`.color-swatch[data-color="${color}"]`);
+    if (match) match.classList.add('selected');
+  }
+}
+
+// Select default color on load
+document.addEventListener('DOMContentLoaded', () => selectColor('#6366f1'));
+
+async function submitHabit(e) {
+  e.preventDefault();
+  const editId = document.getElementById('habit-edit-id').value;
+  const payload = {
+    title:            document.getElementById('habit-title').value.trim(),
+    description:      document.getElementById('habit-desc').value.trim(),
+    category:         document.getElementById('habit-category').value || null,
+    difficulty:       document.getElementById('habit-difficulty').value,
+    routine:          document.getElementById('habit-routine').value,
+    frequency:        document.getElementById('habit-frequency').value,
+    icon:             selectedIcon,
+    color:            selectedColor,
+    reminder_enabled: document.getElementById('habit-reminder').checked,
+    reminder_time:    document.getElementById('habit-reminder').checked
+                        ? document.getElementById('habit-reminder-time').value
+                        : null,
+  };
+
+  if (!payload.title) { showToast('Please enter a habit name', 'error'); return; }
+
+  const btn = document.getElementById('btn-save-habit');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving…';
+
+  try {
+    if (editId) {
+      await API.habits.update(editId, payload);
+      showToast('Habit updated! ✏️', 'success');
+    } else {
+      await API.habits.create(payload);
+      showToast('Habit created! 🎉', 'success');
+    }
+    document.getElementById('habit-modal-overlay').classList.remove('open');
+    if (typeof loadDashboard === 'function') loadDashboard();
+    if (typeof loadHabits    === 'function') loadHabits();
+  } catch(err) {
+    showToast(err.message || 'Failed to save habit', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-check"></i> Save Habit';
+  }
+}
+
+async function deleteCurrentHabit() {
+  const id = document.getElementById('habit-edit-id').value;
+  if (!id || !confirm('Delete this habit? All completion history will be lost.')) return;
+  try {
+    await API.habits.delete(id);
+    showToast('Habit deleted', 'info');
+    document.getElementById('habit-modal-overlay').classList.remove('open');
+    if (typeof loadHabits    === 'function') loadHabits();
+    if (typeof loadDashboard === 'function') loadDashboard();
+  } catch(e) {
+    showToast('Failed to delete habit', 'error');
+  }
+}
+</script>

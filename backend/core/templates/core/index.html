@@ -1,0 +1,68 @@
+{% extends 'core/base.html' %}
+{% block title %}HabitFlow{% endblock %}
+
+{% block body %}
+<div style="min-height:100vh; background:var(--bg-base); display:flex; flex-direction:column;">
+
+  <!-- Nav -->
+  <nav style="padding:20px 48px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border);">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:36px;height:36px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:var(--shadow-glow);">🌱</div>
+      <span style="font-family:var(--font-display);font-size:1.3rem;">HabitFlow</span>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <a href="/login/"    class="btn btn-secondary">Sign In</a>
+      <a href="/register/" class="btn btn-primary">Get Started Free</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center;">
+    <div class="anim-fade-up" style="animation-delay:.05s">
+      <span class="badge badge-accent" style="margin-bottom:24px;">✨ Your personal growth companion</span>
+    </div>
+    <h1 class="anim-fade-up" style="animation-delay:.1s;font-family:var(--font-display);font-size:clamp(2.5rem,6vw,4.5rem);line-height:1.1;max-width:780px;margin-bottom:20px;">
+      Build habits that<br/><em style="color:var(--accent);">actually stick</em>
+    </h1>
+    <p class="anim-fade-up" style="animation-delay:.15s;color:var(--text-secondary);font-size:1.1rem;max-width:520px;margin-bottom:40px;line-height:1.7;">
+      Track your daily routines, maintain streaks, earn achievements, and watch your consistency compound into real life change.
+    </p>
+    <div class="anim-fade-up" style="animation-delay:.2s;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
+      <a href="/register/" class="btn btn-primary btn-lg">Start For Free →</a>
+      <a href="/login/"    class="btn btn-secondary btn-lg">Sign In</a>
+    </div>
+
+    <!-- Feature pills -->
+    <div class="anim-fade-up stagger" style="animation-delay:.3s;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:56px;">
+      <span class="badge badge-green">🔥 Streak Tracking</span>
+      <span class="badge badge-accent">📊 Analytics</span>
+      <span class="badge badge-amber">🏆 Achievements</span>
+      <span class="badge badge-purple">🎮 Gamification</span>
+      <span class="badge badge-green">🌙 Dark Mode</span>
+      <span class="badge badge-accent">📅 Calendar View</span>
+    </div>
+  </section>
+
+  <!-- Features grid -->
+  <section style="padding:60px 48px;max-width:1100px;margin:0 auto;width:100%;">
+    <div class="stats-grid stagger">
+      <div class="stat-card green anim-fade-up"><div class="stat-icon green">🔥</div><div class="stat-value">365</div><div class="stat-label">Max streak possible</div></div>
+      <div class="stat-card accent anim-fade-up"><div class="stat-icon accent">✅</div><div class="stat-value">∞</div><div class="stat-label">Habits you can track</div></div>
+      <div class="stat-card amber anim-fade-up"><div class="stat-icon amber">🏆</div><div class="stat-value">12+</div><div class="stat-label">Achievements to unlock</div></div>
+      <div class="stat-card purple anim-fade-up"><div class="stat-icon purple">📈</div><div class="stat-value">100</div><div class="stat-label">Max productivity score</div></div>
+    </div>
+  </section>
+
+  <footer style="text-align:center;padding:24px;color:var(--text-muted);font-size:.8rem;border-top:1px solid var(--border);">
+    © 2025 HabitFlow — Built with Django &amp; Supabase
+  </footer>
+</div>
+
+<script>
+  // Redirect if already logged in
+  (async () => {
+    const session = await Auth.getSession();
+    if (session) window.location.href = '/dashboard/';
+  })();
+</script>
+{% endblock %}

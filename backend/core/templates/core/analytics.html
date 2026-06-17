@@ -1,0 +1,238 @@
+{% extends 'core/base.html' %}
+{% block title %}Analytics{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  {% include 'core/partials/sidebar.html' %}
+
+  <main class="main-content">
+    <header class="top-bar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-ghost btn-icon mobile-menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span class="top-bar-title">Analytics</span>
+      </div>
+      <div class="top-bar-actions">
+        <div class="chip-row">
+          <button class="chip active" onclick="loadAnalytics('week',this)">7 Days</button>
+          <button class="chip"        onclick="loadAnalytics('month',this)">30 Days</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Stats row -->
+      <div class="stats-grid stagger mb-6">
+        <div class="stat-card accent">
+          <div class="stat-icon accent">📊</div>
+          <div class="stat-value" id="a-overall">–</div>
+          <div class="stat-label">Overall Completion Rate</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon green">✅</div>
+          <div class="stat-value" id="a-total">–</div>
+          <div class="stat-label">Total Completions</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon amber">🔥</div>
+          <div class="stat-value" id="a-streak">–</div>
+          <div class="stat-label">Best Streak</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon purple">⚡</div>
+          <div class="stat-value" id="a-score">–</div>
+          <div class="stat-label">Productivity Score</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="two-col mb-6">
+        <!-- Completion rate line chart -->
+        <div class="card">
+          <div class="card-ph"><span style="font-weight:700;">Daily Completion Rate</span></div>
+          <div style="padding:20px;">
+            <canvas id="chart-completion" height="180"></canvas>
+          </div>
+        </div>
+
+        <!-- Bar chart by habit -->
+        <div class="card">
+          <div class="card-ph"><span style="font-weight:700;">Completions by Habit</span></div>
+          <div style="padding:20px;">
+            <canvas id="chart-habits" height="180"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Habit stats table -->
+      <div class="card mb-6">
+        <div class="card-ph"><span style="font-weight:700;">Habit Breakdown</span></div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;" id="habit-table">
+            <thead>
+              <tr style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">
+                <th style="padding:12px 20px;text-align:left;font-weight:600;">Habit</th>
+                <th style="padding:12px 20px;text-align:right;font-weight:600;">Completions</th>
+                <th style="padding:12px 20px;text-align:right;font-weight:600;">Streak</th>
+                <th style="padding:12px 20px;text-align:left;font-weight:600;min-width:140px;">Success Rate</th>
+              </tr>
+            </thead>
+            <tbody id="habit-table-body">
+              <tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text-muted);">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+let charts = {};
+
+async function loadAnalytics(period = 'week', btn = null) {
+  if (btn) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (!await requireAuth()) return;
+
+  try {
+    const data = await API.analytics(period);
+    renderAnalytics(data);
+  } catch(e) {
+    showToast('Failed to load analytics', 'error');
+  }
+}
+
+function renderAnalytics(d) {
+  document.getElementById('a-overall').textContent = d.overall_rate + '%';
+  document.getElementById('a-total').textContent   = d.total_completions;
+  document.getElementById('a-streak').textContent  = d.best_streak + ' days';
+  document.getElementById('a-score').textContent   = d.productivity_score;
+
+  renderCompletionChart(d.daily_data);
+  renderHabitChart(d.habit_stats);
+  renderHabitTable(d.habit_stats);
+}
+
+const chartDefaults = {
+  font:    { family: 'DM Sans', size: 11 },
+  color:   '#9499b0',
+  gridColor: 'rgba(255,255,255,.06)',
+};
+
+function renderCompletionChart(daily) {
+  if (charts.completion) charts.completion.destroy();
+  const ctx = document.getElementById('chart-completion').getContext('2d');
+  charts.completion = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: daily.map(d => d.day),
+      datasets: [{
+        label: 'Completion %',
+        data: daily.map(d => d.rate),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,.1)',
+        fill: true,
+        tension: .4,
+        pointBackgroundColor: '#6366f1',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)}%` }
+        }
+      },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          grid: { color: chartDefaults.gridColor },
+          ticks: { color: chartDefaults.color, font: chartDefaults.font, callback: v => v + '%' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: chartDefaults.color, font: chartDefaults.font }
+        }
+      }
+    }
+  });
+}
+
+function renderHabitChart(habits) {
+  if (charts.habits) charts.habits.destroy();
+  if (!habits.length) return;
+  const ctx = document.getElementById('chart-habits').getContext('2d');
+  const top = habits.slice(0, 8);
+  charts.habits = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: top.map(h => h.title.length > 14 ? h.title.slice(0,14)+'…' : h.title),
+      datasets: [{
+        label: 'Completions',
+        data: top.map(h => h.completions),
+        backgroundColor: top.map(h => h.color || '#6366f1'),
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          grid: { color: chartDefaults.gridColor },
+          ticks: { color: chartDefaults.color, font: chartDefaults.font }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: chartDefaults.color, font: chartDefaults.font }
+        }
+      }
+    }
+  });
+}
+
+function renderHabitTable(habits) {
+  const tbody = document.getElementById('habit-table-body');
+  if (!habits.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text-muted);">No habits data</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = habits.map((h, i) => {
+    const rateColor = h.success_rate >= 80 ? 'var(--green)' : h.success_rate >= 50 ? 'var(--accent)' : 'var(--amber)';
+    return `
+    <tr style="border-top:1px solid var(--border);transition:background .15s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
+      <td style="padding:14px 20px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.2rem;">${h.icon}</span>
+          <div>
+            <div style="font-weight:600;font-size:.875rem;">${h.title}</div>
+            ${i === 0 ? `<span class="badge badge-amber" style="font-size:.65rem;">🏆 Top habit</span>` : ''}
+          </div>
+        </div>
+      </td>
+      <td style="padding:14px 20px;text-align:right;font-weight:700;">${h.completions}</td>
+      <td style="padding:14px 20px;text-align:right;">
+        ${h.streak > 0 ? `<span class="habit-streak">🔥 ${h.streak}</span>` : `<span style="color:var(--text-muted);">–</span>`}
+      </td>
+      <td style="padding:14px 20px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="progress-bar" style="flex:1;"><div class="progress-fill" style="width:${h.success_rate}%;background:${rateColor};"></div></div>
+          <span style="font-size:.8rem;font-weight:700;color:${rateColor};min-width:36px;text-align:right;">${h.success_rate}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+loadAnalytics('week');
+</script>
+{% endblock %}

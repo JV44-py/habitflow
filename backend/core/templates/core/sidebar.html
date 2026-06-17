@@ -1,0 +1,83 @@
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🌱</div>
+    <span class="sidebar-logo-text">HabitFlow</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <span class="nav-section-label">Overview</span>
+    <a href="/dashboard/" class="nav-item" data-page="dashboard">
+      <span class="nav-icon">🏠</span> Dashboard
+    </a>
+    <a href="/analytics/" class="nav-item" data-page="analytics">
+      <span class="nav-icon">📊</span> Analytics
+    </a>
+    <a href="/calendar/" class="nav-item" data-page="calendar">
+      <span class="nav-icon">📅</span> Calendar
+    </a>
+
+    <span class="nav-section-label">My Habits</span>
+    <a href="/habits/" class="nav-item" data-page="habits">
+      <span class="nav-icon">✅</span> All Habits
+    </a>
+    <a href="/habits/?routine=morning" class="nav-item">
+      <span class="nav-icon">🌅</span> Morning
+    </a>
+    <a href="/habits/?routine=afternoon" class="nav-item">
+      <span class="nav-icon">☀️</span> Afternoon
+    </a>
+    <a href="/habits/?routine=evening" class="nav-item">
+      <span class="nav-icon">🌙</span> Evening
+    </a>
+
+    <span class="nav-section-label">Progress</span>
+    <a href="/achievements/" class="nav-item" data-page="achievements">
+      <span class="nav-icon">🏆</span> Achievements
+    </a>
+
+    <span class="nav-section-label">Account</span>
+    <a href="/profile/" class="nav-item" data-page="profile">
+      <span class="nav-icon">👤</span> Profile
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <!-- Theme toggle -->
+    <button onclick="toggleTheme()" class="btn btn-ghost w-full mb-2" style="justify-content:flex-start; gap:10px;">
+      <span id="theme-icon">🌙</span>
+      <span id="theme-label">Dark Mode</span>
+    </button>
+    <!-- User mini -->
+    <div class="user-mini" onclick="window.location.href='/profile/'">
+      <div class="user-avatar" id="sidebar-avatar">?</div>
+      <div class="user-mini-info">
+        <div class="user-mini-name" id="sidebar-username">Loading…</div>
+        <div class="user-mini-level" id="sidebar-level">Level 1</div>
+      </div>
+      <button onclick="event.stopPropagation(); Auth.signOut()" class="btn btn-ghost btn-icon btn-sm" data-tooltip="Sign out">
+        <i class="fa fa-sign-out-alt" style="font-size:.8rem;"></i>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<script>
+// Highlight active nav
+(function(){
+  const path = window.location.pathname;
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    if (path.includes(el.dataset.page)) el.classList.add('active');
+  });
+})();
+
+// Theme button state
+function updateThemeButton(){
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.getElementById('theme-icon').textContent  = dark ? '☀️' : '🌙';
+  document.getElementById('theme-label').textContent = dark ? 'Light Mode' : 'Dark Mode';
+}
+updateThemeButton();
+const _origToggle = window.toggleTheme;
+window.toggleTheme = function(){ _origToggle(); updateThemeButton(); };
+</script>

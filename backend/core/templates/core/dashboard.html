@@ -1,0 +1,292 @@
+{% extends 'core/base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  {% include 'core/partials/sidebar.html' %}
+
+  <main class="main-content">
+    <!-- Top bar -->
+    <header class="top-bar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-ghost btn-icon mobile-menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">
+          <i class="fa fa-bars"></i>
+        </button>
+        <div>
+          <div class="top-bar-title" id="greeting">Good morning! 👋</div>
+          <div style="font-size:.75rem;color:var(--text-muted);" id="today-date"></div>
+        </div>
+      </div>
+      <div class="top-bar-actions">
+        <button class="btn btn-ghost btn-icon btn-sm" onclick="loadDashboard()" data-tooltip="Refresh">
+          <i class="fa fa-rotate-right"></i>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openHabitModal()">
+          <i class="fa fa-plus"></i> New Habit
+        </button>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Quote banner -->
+      <div class="card card-p mb-4 anim-fade-up" id="quote-banner" style="background:linear-gradient(135deg,var(--accent-light),var(--purple-light));border-color:rgba(99,102,241,.2);">
+        <p style="font-family:var(--font-display);font-size:1rem;font-style:italic;color:var(--text-primary);margin-bottom:4px;" id="quote-text">Loading…</p>
+        <p style="font-size:.75rem;color:var(--text-muted);" id="quote-author"></p>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="stats-grid stagger mb-6">
+        <div class="stat-card green">
+          <div class="stat-icon green">✅</div>
+          <div class="stat-value" id="stat-today">–</div>
+          <div class="stat-label">Today's Completions</div>
+          <div class="progress-bar mt-2"><div class="progress-fill green" id="stat-today-bar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon amber">🔥</div>
+          <div class="stat-value" id="stat-streak">–</div>
+          <div class="stat-label">Best Active Streak</div>
+          <div class="stat-delta" id="stat-streak-delta"></div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-icon accent">📊</div>
+          <div class="stat-value" id="stat-weekly">–</div>
+          <div class="stat-label">Weekly Rate</div>
+          <div class="progress-bar mt-2"><div class="progress-fill" id="stat-weekly-bar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon purple">⚡</div>
+          <div class="stat-value" id="stat-xp">–</div>
+          <div class="stat-label">Total XP · Level <span id="stat-level">1</span></div>
+          <div class="xp-bar-wrap mt-2"><div class="xp-bar-fill" id="stat-xp-bar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon blue">🎯</div>
+          <div class="stat-value" id="stat-score">–</div>
+          <div class="stat-label">Productivity Score</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon green">🏅</div>
+          <div class="stat-value" id="stat-total">–</div>
+          <div class="stat-label">Total Completions</div>
+        </div>
+      </div>
+
+      <!-- Main 2-col -->
+      <div class="two-col">
+        <!-- Today's habits -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <h2 style="font-size:1rem;font-weight:700;">Today's Habits</h2>
+            <a href="/habits/" style="font-size:.8rem;color:var(--accent);text-decoration:none;">View all →</a>
+          </div>
+          <div id="today-habits-list">
+            <!-- Skeleton -->
+            <div class="skeleton" style="height:70px;margin-bottom:10px;border-radius:var(--radius-md);"></div>
+            <div class="skeleton" style="height:70px;margin-bottom:10px;border-radius:var(--radius-md);"></div>
+            <div class="skeleton" style="height:70px;border-radius:var(--radius-md);"></div>
+          </div>
+        </div>
+
+        <!-- Right col -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <!-- Recent achievements -->
+          <div class="card">
+            <div class="card-ph" style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-weight:700;font-size:.95rem;">Recent Achievements</span>
+              <a href="/achievements/" style="font-size:.75rem;color:var(--accent);text-decoration:none;">All →</a>
+            </div>
+            <div id="recent-achievements" style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+              <div class="skeleton" style="height:44px;border-radius:10px;"></div>
+              <div class="skeleton" style="height:44px;border-radius:10px;"></div>
+            </div>
+          </div>
+
+          <!-- Mini weekly chart -->
+          <div class="card">
+            <div class="card-ph"><span style="font-weight:700;font-size:.95rem;">This Week</span></div>
+            <div style="padding:16px;">
+              <canvas id="mini-chart" height="100"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </main>
+</div>
+
+<!-- Habit Modal (shared) -->
+{% include 'core/partials/habit_modal.html' %}
+
+<script>
+let dashData = null;
+let miniChart = null;
+
+async function loadDashboard() {
+  if (!await requireAuth()) return;
+  try {
+    dashData = await API.dashboard();
+    renderDashboard(dashData);
+  } catch(e) {
+    showToast('Failed to load dashboard', 'error');
+  }
+}
+
+function renderDashboard(d) {
+  // Greeting
+  const h = new Date().getHours();
+  const greet = h < 12 ? '🌅 Good morning' : h < 17 ? '☀️ Good afternoon' : '🌙 Good evening';
+  document.getElementById('greeting').textContent = greet + ', ' + (d.user.first_name || d.user.username) + '!';
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Quote
+  document.getElementById('quote-text').textContent   = '"' + d.motivational_quote.text + '"';
+  document.getElementById('quote-author').textContent = '— ' + d.motivational_quote.author;
+
+  // Stats
+  document.getElementById('stat-today').textContent   = d.today_completion_count + '/' + d.today_total;
+  document.getElementById('stat-today-bar').style.width = d.today_completion_rate + '%';
+  document.getElementById('stat-streak').textContent  = d.current_streak + ' days';
+  if (d.current_streak > 0) document.getElementById('stat-streak-delta').textContent = '🔥 Keep it up!';
+  document.getElementById('stat-weekly').textContent  = d.weekly_completion_rate.toFixed(0) + '%';
+  document.getElementById('stat-weekly-bar').style.width = d.weekly_completion_rate + '%';
+  document.getElementById('stat-xp').textContent      = d.user.xp_points;
+  document.getElementById('stat-level').textContent   = d.user.level;
+  document.getElementById('stat-xp-bar').style.width  = d.user.level_progress.percentage + '%';
+  document.getElementById('stat-score').textContent   = d.user.productivity_score;
+  document.getElementById('stat-total').textContent   = d.user.total_habits_completed;
+
+  // Sidebar user info
+  const uname = d.user.first_name ? d.user.first_name + ' ' + (d.user.last_name || '') : d.user.username;
+  document.getElementById('sidebar-username').textContent = uname.trim();
+  document.getElementById('sidebar-level').textContent    = 'Level ' + d.user.level + ' · ' + d.user.xp_points + ' XP';
+  const av = document.getElementById('sidebar-avatar');
+  if (d.user.avatar_url) av.innerHTML = `<img src="${d.user.avatar_url}" alt="avatar"/>`;
+  else av.textContent = (d.user.first_name || d.user.username || '?')[0].toUpperCase();
+
+  // Habits list
+  renderTodayHabits(d.today_habits);
+
+  // Achievements
+  renderRecentAchievements(d.recent_achievements);
+
+  // Mini chart (load analytics separately)
+  loadMiniChart();
+}
+
+function renderTodayHabits(habits) {
+  const container = document.getElementById('today-habits-list');
+  if (!habits.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✨</div><div class="empty-state-title">No habits yet</div><div class="empty-state-desc">Create your first habit to get started!</div><button class="btn btn-primary" onclick="openHabitModal()">+ Add Habit</button></div>`;
+    return;
+  }
+  container.innerHTML = habits.map(h => habitCardHTML(h)).join('');
+}
+
+function habitCardHTML(h) {
+  const done = h.is_completed_today;
+  const diff = `<span class="difficulty-badge ${h.difficulty}">${h.difficulty}</span>`;
+  const streak = h.current_streak > 0 ? `<span class="habit-streak">🔥 ${h.current_streak}</span>` : '';
+  return `
+  <div class="habit-card ${done ? 'completed' : ''} anim-fade-up" id="habit-${h.id}" onclick="toggleHabit('${h.id}', this)" style="margin-bottom:10px;cursor:pointer;">
+    <div class="habit-check ${done ? 'checked' : ''}" id="check-${h.id}"></div>
+    <div class="habit-icon-badge" style="background:${h.color}22;">${h.icon}</div>
+    <div class="habit-body">
+      <div class="habit-title" style="${done ? 'text-decoration:line-through;opacity:.6;' : ''}">${h.title}</div>
+      <div class="habit-meta">
+        ${h.category_detail ? `<span>${h.category_detail.icon} ${h.category_detail.name}</span>` : ''}
+        <span>${h.routine}</span>
+        ${diff}
+        ${streak}
+      </div>
+    </div>
+    <div style="font-size:.7rem;color:var(--text-muted);text-align:right;">
+      +${h.xp_reward} XP
+    </div>
+  </div>`;
+}
+
+async function toggleHabit(id, el) {
+  try {
+    const result = await API.habits.toggle(id, {});
+    const card  = document.getElementById('habit-' + id);
+    const check = document.getElementById('check-' + id);
+    if (result.completed) {
+      card.classList.add('completed');
+      check.classList.add('checked');
+      card.querySelector('.habit-title').style.cssText = 'text-decoration:line-through;opacity:.6;';
+      showToast(`+${result.xp_earned} XP earned! 🎉`, 'success');
+    } else {
+      card.classList.remove('completed');
+      check.classList.remove('checked');
+      card.querySelector('.habit-title').style.cssText = '';
+    }
+    // Update stat numbers
+    document.getElementById('stat-xp').textContent   = result.user_xp;
+    document.getElementById('stat-level').textContent = result.user_level;
+    // Refresh full dash after toggle
+    setTimeout(loadDashboard, 600);
+  } catch(e) {
+    showToast('Failed to update habit', 'error');
+  }
+}
+
+function renderRecentAchievements(achievements) {
+  const container = document.getElementById('recent-achievements');
+  if (!achievements.length) {
+    container.innerHTML = `<p style="font-size:.8rem;color:var(--text-muted);text-align:center;padding:12px;">Complete habits to unlock achievements!</p>`;
+    return;
+  }
+  container.innerHTML = achievements.map(ua => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-hover);border-radius:10px;" class="anim-fade-up">
+      <span style="font-size:1.5rem;">${ua.achievement.badge_icon}</span>
+      <div>
+        <div style="font-weight:600;font-size:.85rem;">${ua.achievement.title}</div>
+        <div style="font-size:.72rem;color:var(--text-muted);">${timeAgo(ua.unlocked_at)}</div>
+      </div>
+      <span class="badge badge-amber" style="margin-left:auto;">+${ua.achievement.xp_reward} XP</span>
+    </div>
+  `).join('');
+}
+
+async function loadMiniChart() {
+  try {
+    const data = await API.analytics('week');
+    const labels = data.daily_data.map(d => d.day);
+    const values = data.daily_data.map(d => d.rate);
+    if (miniChart) miniChart.destroy();
+    const ctx = document.getElementById('mini-chart').getContext('2d');
+    miniChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: values.map(v => v >= 80 ? '#10b981' : v >= 50 ? '#6366f1' : '#f59e0b'),
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#9499b0', font: { size: 10 } } },
+          x: { grid: { display: false }, ticks: { color: '#9499b0', font: { size: 10 } } }
+        }
+      }
+    });
+  } catch(e) {}
+}
+
+// Habit modal (inline new habit from dashboard)
+function openHabitModal() {
+  document.getElementById('habit-modal-overlay').classList.add('open');
+}
+
+// Load on init
+loadDashboard();
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+</script>
+{% endblock %}

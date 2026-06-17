@@ -1,0 +1,261 @@
+{% extends 'core/base.html' %}
+{% block title %}My Habits{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  {% include 'core/partials/sidebar.html' %}
+
+  <main class="main-content">
+    <header class="top-bar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-ghost btn-icon mobile-menu-btn"
+                onclick="document.getElementById('sidebar').classList.toggle('open')">
+          <i class="fa fa-bars"></i>
+        </button>
+        <span class="top-bar-title">My Habits</span>
+      </div>
+      <div class="top-bar-actions">
+        <div class="search-bar" style="width:220px;">
+          <i class="fa fa-search search-icon"></i>
+          <input type="text" id="search-input" placeholder="Search habits…" oninput="filterHabits()"/>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openHabitModal()">
+          <i class="fa fa-plus"></i> New Habit
+        </button>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Filters + Sort -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;" class="anim-fade-up">
+        <div class="chip-row" id="filter-chips">
+          <button class="chip active" data-filter="all"       onclick="setFilter('all',this)">All</button>
+          <button class="chip"        data-filter="morning"   onclick="setFilter('morning',this)">🌅 Morning</button>
+          <button class="chip"        data-filter="afternoon" onclick="setFilter('afternoon',this)">☀️ Afternoon</button>
+          <button class="chip"        data-filter="evening"   onclick="setFilter('evening',this)">🌙 Evening</button>
+          <button class="chip"        data-filter="anytime"   onclick="setFilter('anytime',this)">⭐ Anytime</button>
+          <button class="chip"        data-filter="completed" onclick="setFilter('completed',this)">✅ Done</button>
+          <button class="chip"        data-filter="pending"   onclick="setFilter('pending',this)">⏳ Pending</button>
+        </div>
+        <select class="form-select" style="width:160px;" id="sort-select" onchange="filterHabits()">
+          <option value="default">Sort: Default</option>
+          <option value="streak">Sort: Streak</option>
+          <option value="rate">Sort: Success Rate</option>
+          <option value="title">Sort: A–Z</option>
+        </select>
+      </div>
+
+      <!-- Habit count badge -->
+      <div style="margin-bottom:14px;font-size:.8rem;color:var(--text-muted);">
+        Showing <span id="habit-count" style="font-weight:700;color:var(--text-primary);">…</span> habits
+      </div>
+
+      <!-- Routine sections (shown when filter = morning/afternoon/evening/anytime) -->
+      <div id="routine-sections" style="display:none;">
+        {% for routine, label, icon in routines %}
+        <div class="routine-section" id="rsec-{{ routine }}">
+          <div class="routine-header" onclick="toggleRoutineSection('{{ routine }}')">
+            <div style="display:flex;align-items:center;">
+              <span class="routine-icon">{{ icon }}</span>
+              <span class="routine-title">{{ label }}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="routine-count" id="rcount-{{ routine }}">0 habits</span>
+              <i class="fa fa-chevron-down" id="rchev-{{ routine }}"
+                 style="color:var(--text-muted);font-size:.75rem;transition:transform .2s;"></i>
+            </div>
+          </div>
+          <div class="routine-body" id="rbody-{{ routine }}"></div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Flat grid (default) -->
+      <div class="habits-grid stagger" id="habits-grid">
+        <div class="skeleton" style="height:110px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:110px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:110px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:110px;border-radius:var(--radius-md);"></div>
+      </div>
+
+    </div><!-- /page-content -->
+  </main>
+</div>
+
+{% include 'core/partials/habit_modal.html' %}
+
+<script>
+let allHabits    = [];
+let activeFilter = 'all';
+
+// Pre-select filter from URL param
+const _urlRoutine = new URLSearchParams(window.location.search).get('routine');
+if (_urlRoutine) activeFilter = _urlRoutine;
+
+async function loadHabits() {
+  if (!await requireAuth()) return;
+  try {
+    allHabits = await API.habits.list();
+    // Also update filter chips based on URL
+    if (_urlRoutine) {
+      document.querySelectorAll('#filter-chips .chip').forEach(c => {
+        c.classList.toggle('active', c.dataset.filter === _urlRoutine);
+      });
+    }
+    filterHabits();
+  } catch(e) {
+    showToast('Failed to load habits', 'error');
+    document.getElementById('habits-grid').innerHTML =
+      `<div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-state-icon">⚠️</div>
+        <div class="empty-state-title">Could not load habits</div>
+        <div class="empty-state-desc">Please refresh the page.</div>
+       </div>`;
+  }
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('#filter-chips .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  filterHabits();
+}
+
+function filterHabits() {
+  const search = document.getElementById('search-input').value.toLowerCase().trim();
+  const sort   = document.getElementById('sort-select').value;
+  let habits   = [...allHabits];
+
+  // Filter
+  if      (activeFilter === 'completed')  habits = habits.filter(h => h.is_completed_today);
+  else if (activeFilter === 'pending')    habits = habits.filter(h => !h.is_completed_today);
+  else if (activeFilter !== 'all')        habits = habits.filter(h => h.routine === activeFilter);
+
+  // Search
+  if (search) habits = habits.filter(h =>
+    h.title.toLowerCase().includes(search) ||
+    (h.description || '').toLowerCase().includes(search)
+  );
+
+  // Sort
+  if      (sort === 'streak') habits.sort((a,b) => b.current_streak - a.current_streak);
+  else if (sort === 'rate')   habits.sort((a,b) => b.success_rate - a.success_rate);
+  else if (sort === 'title')  habits.sort((a,b) => a.title.localeCompare(b.title));
+
+  document.getElementById('habit-count').textContent = habits.length;
+  renderHabitsGrid(habits);
+}
+
+function renderHabitsGrid(habits) {
+  const grid     = document.getElementById('habits-grid');
+  const sections = document.getElementById('routine-sections');
+  grid.style.display     = '';
+  sections.style.display = 'none';
+
+  if (!habits.length) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-state-icon">🎯</div>
+        <div class="empty-state-title">No habits found</div>
+        <div class="empty-state-desc">Try a different filter or create your first habit.</div>
+        <button class="btn btn-primary" onclick="openHabitModal()">+ Add Habit</button>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = habits.map(h => habitCardHTML(h)).join('');
+}
+
+function habitCardHTML(h) {
+  const done     = h.is_completed_today;
+  const catBadge = h.category_detail
+    ? `<span>${h.category_detail.icon} ${h.category_detail.name}</span>`
+    : '';
+  const streak = h.current_streak > 0
+    ? `<span class="habit-streak">🔥 ${h.current_streak} day streak</span>`
+    : '';
+
+  return `
+  <div class="habit-card ${done ? 'completed' : ''} anim-fade-up" id="habit-${h.id}">
+    <div class="habit-check ${done ? 'checked' : ''}"
+         onclick="toggleHabit('${h.id}')" title="Mark complete"></div>
+
+    <div class="habit-icon-badge" style="background:${h.color}22;">${h.icon}</div>
+
+    <div class="habit-body">
+      <div class="habit-title"
+           style="${done ? 'text-decoration:line-through;opacity:.55;' : ''}">${h.title}</div>
+      <div class="habit-meta">
+        ${catBadge}
+        <span class="difficulty-badge ${h.difficulty}">${h.difficulty}</span>
+        ${streak}
+      </div>
+      <div style="margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:.7rem;
+                    color:var(--text-muted);margin-bottom:4px;">
+          <span>30-day success rate</span><span>${h.success_rate}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill ${h.success_rate >= 70 ? 'green' : ''}"
+               style="width:${h.success_rate}%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+      <button class="btn btn-ghost btn-icon btn-sm"
+              onclick="openHabitModal(${escapeHabit(h)})" title="Edit">
+        <i class="fa fa-pen" style="font-size:.75rem;"></i>
+      </button>
+      <span style="font-size:.68rem;color:var(--text-muted);">+${h.xp_reward} XP</span>
+    </div>
+  </div>`;
+}
+
+// Safe JSON serialisation for inline onclick attribute
+function escapeHabit(h) {
+  return "JSON.parse(decodeURIComponent('" +
+    encodeURIComponent(JSON.stringify(h)) + "'))";
+}
+
+async function toggleHabit(id) {
+  try {
+    const res   = await API.habits.toggle(id, {});
+    const card  = document.getElementById('habit-' + id);
+    const check = card ? card.querySelector('.habit-check') : null;
+    const title = card ? card.querySelector('.habit-title') : null;
+
+    if (res.completed) {
+      card  && card.classList.add('completed');
+      check && check.classList.add('checked');
+      title && (title.style.cssText = 'text-decoration:line-through;opacity:.55;');
+      showToast(`✅ Done! +${res.xp_earned} XP`, 'success');
+    } else {
+      card  && card.classList.remove('completed');
+      check && check.classList.remove('checked');
+      title && (title.style.cssText = '');
+      showToast('Habit unmarked', 'info');
+    }
+
+    // Update local cache
+    const h = allHabits.find(x => x.id === id);
+    if (h) { h.is_completed_today = res.completed; h.current_streak = res.streak; }
+
+  } catch(e) {
+    showToast('Failed to update — please try again', 'error');
+  }
+}
+
+function toggleRoutineSection(routine) {
+  const body  = document.getElementById('rbody-' + routine);
+  const chev  = document.getElementById('rchev-' + routine);
+  if (!body) return;
+  const open  = body.style.display !== 'none';
+  body.style.display    = open ? 'none' : 'flex';
+  chev.style.transform  = open ? '' : 'rotate(180deg)';
+}
+
+loadHabits();
+</script>
+{% endblock %}

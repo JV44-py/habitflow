@@ -1,0 +1,117 @@
+{% extends 'core/base.html' %}
+{% block title %}Achievements{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  {% include 'core/partials/sidebar.html' %}
+
+  <main class="main-content">
+    <header class="top-bar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-ghost btn-icon mobile-menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span class="top-bar-title">Achievements</span>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <!-- XP overview -->
+      <div class="card card-p mb-6 anim-fade-up" style="background:linear-gradient(135deg,var(--accent-light),var(--purple-light));border-color:rgba(99,102,241,.25);">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+          <div>
+            <div style="font-size:.8rem;color:var(--text-secondary);margin-bottom:4px;">Your Level</div>
+            <div style="font-family:var(--font-display);font-size:2.5rem;" id="ach-level">–</div>
+            <div style="font-size:.8rem;color:var(--text-secondary);" id="ach-xp-text">0 / 100 XP to next level</div>
+          </div>
+          <div style="flex:1;min-width:200px;">
+            <div class="xp-bar-wrap" style="height:12px;"><div class="xp-bar-fill" id="ach-xp-bar" style="width:0%"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);margin-top:4px;">
+              <span>Level <span id="ach-level-cur">1</span></span>
+              <span>Level <span id="ach-level-next">2</span></span>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:2rem;font-weight:700;color:var(--accent);" id="ach-total-xp">–</div>
+            <div style="font-size:.8rem;color:var(--text-secondary);">Total XP</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="chip-row mb-4 anim-fade-up" style="animation-delay:.05s;">
+        <button class="chip active" onclick="filterAch('all',this)">All</button>
+        <button class="chip" onclick="filterAch('unlocked',this)">🔓 Unlocked</button>
+        <button class="chip" onclick="filterAch('locked',this)">🔒 Locked</button>
+        <button class="chip" onclick="filterAch('streak',this)">🔥 Streaks</button>
+        <button class="chip" onclick="filterAch('completion',this)">✅ Completions</button>
+        <button class="chip" onclick="filterAch('milestone',this)">🏗️ Milestones</button>
+      </div>
+
+      <!-- Achievements grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;" id="ach-grid" class="stagger">
+        <div class="skeleton" style="height:160px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:160px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:160px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:160px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:160px;border-radius:var(--radius-md);"></div>
+        <div class="skeleton" style="height:160px;border-radius:var(--radius-md);"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+let allAch = [];
+let achFilter = 'all';
+
+async function loadAchievements() {
+  if (!await requireAuth()) return;
+  try {
+    const [achData, profileData] = await Promise.all([API.achievements(), API.profile()]);
+    allAch = achData;
+
+    // XP bar
+    const p = profileData.level_progress;
+    document.getElementById('ach-level').textContent     = 'Level ' + profileData.level;
+    document.getElementById('ach-level-cur').textContent = profileData.level;
+    document.getElementById('ach-level-next').textContent= profileData.level + 1;
+    document.getElementById('ach-total-xp').textContent  = profileData.xp_points + ' XP';
+    document.getElementById('ach-xp-bar').style.width    = p.percentage + '%';
+    document.getElementById('ach-xp-text').textContent   = p.level_xp + ' / ' + p.needed_xp + ' XP to next level';
+
+    renderAch();
+  } catch(e) {
+    showToast('Failed to load achievements', 'error');
+  }
+}
+
+function filterAch(f, btn) {
+  achFilter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderAch();
+}
+
+function renderAch() {
+  let list = [...allAch];
+  if (achFilter === 'unlocked') list = list.filter(a => a.unlocked);
+  else if (achFilter === 'locked')  list = list.filter(a => !a.unlocked);
+  else if (achFilter !== 'all')     list = list.filter(a => a.badge_type === achFilter);
+
+  const grid = document.getElementById('ach-grid');
+  grid.innerHTML = list.map((a, i) => `
+    <div class="achievement-card ${a.unlocked ? 'unlocked' : 'locked'} anim-fade-up" style="animation-delay:${i*.04}s;">
+      ${a.unlocked ? `<div style="position:absolute;top:8px;right:8px;font-size:.65rem;background:var(--amber-light);color:var(--amber);padding:2px 7px;border-radius:99px;font-weight:700;">UNLOCKED</div>` : ''}
+      <span class="achievement-badge-icon">${a.badge_icon}</span>
+      <div class="achievement-title">${a.title}</div>
+      <div class="achievement-desc">${a.description}</div>
+      <div class="achievement-xp">+${a.xp_reward} XP</div>
+      ${a.unlocked && a.unlocked_at ? `<div style="font-size:.65rem;color:var(--text-muted);margin-top:4px;">${formatDate(a.unlocked_at)}</div>` : ''}
+      ${!a.unlocked ? `<div style="font-size:.7rem;color:var(--text-muted);margin-top:6px;">Reach ${a.requirement_value} ${a.badge_type === 'streak' ? 'day streak' : a.badge_type === 'completion' ? 'completions' : 'habits'}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+loadAchievements();
+</script>
+{% endblock %}

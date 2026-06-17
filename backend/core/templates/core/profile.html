@@ -1,0 +1,336 @@
+{% extends 'core/base.html' %}
+{% block title %}Profile{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  {% include 'core/partials/sidebar.html' %}
+
+  <main class="main-content">
+    <header class="top-bar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-ghost btn-icon mobile-menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa fa-bars"></i></button>
+        <span class="top-bar-title">Profile & Settings</span>
+      </div>
+      <div class="top-bar-actions">
+        <button class="btn btn-danger btn-sm" onclick="Auth.signOut()"><i class="fa fa-sign-out-alt"></i> Sign Out</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="two-col">
+
+        <!-- Profile card -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+
+          <div class="card card-p anim-fade-up">
+            <div style="text-align:center;margin-bottom:20px;">
+              <!-- Avatar -->
+              <div style="position:relative;display:inline-block;margin-bottom:14px;">
+                <div id="profile-avatar" style="width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:white;margin:0 auto;overflow:hidden;border:3px solid var(--border);"></div>
+                <label for="avatar-upload" style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.7rem;color:white;" title="Change avatar">✏️</label>
+                <input type="file" id="avatar-upload" accept="image/*" style="display:none;" onchange="previewAvatar(this)"/>
+              </div>
+              <div style="font-size:1.2rem;font-weight:700;" id="profile-name">–</div>
+              <div style="font-size:.8rem;color:var(--text-muted);" id="profile-email">–</div>
+              <div style="display:flex;justify-content:center;gap:10px;margin-top:10px;">
+                <span class="badge badge-accent" id="profile-level">Level 1</span>
+                <span class="badge badge-amber" id="profile-xp">0 XP</span>
+              </div>
+            </div>
+
+            <!-- XP bar -->
+            <div style="margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text-muted);margin-bottom:6px;">
+                <span>Level progress</span>
+                <span id="xp-progress-text">0 / 100 XP</span>
+              </div>
+              <div class="xp-bar-wrap"><div class="xp-bar-fill" id="xp-bar" style="width:0%"></div></div>
+            </div>
+
+            <!-- Stats row -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
+              <div style="padding:12px;background:var(--bg-hover);border-radius:10px;">
+                <div style="font-size:1.3rem;font-weight:700;color:var(--green);" id="p-total">–</div>
+                <div style="font-size:.7rem;color:var(--text-muted);">Completions</div>
+              </div>
+              <div style="padding:12px;background:var(--bg-hover);border-radius:10px;">
+                <div style="font-size:1.3rem;font-weight:700;color:var(--amber);" id="p-streak">–</div>
+                <div style="font-size:.7rem;color:var(--text-muted);">Best Streak</div>
+              </div>
+              <div style="padding:12px;background:var(--bg-hover);border-radius:10px;">
+                <div style="font-size:1.3rem;font-weight:700;color:var(--accent);" id="p-score">–</div>
+                <div style="font-size:.7rem;color:var(--text-muted);">Score</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Danger zone -->
+          <div class="card card-p anim-fade-up" style="animation-delay:.15s;border-color:rgba(239,68,68,.2);">
+            <div style="font-size:.9rem;font-weight:700;color:var(--red);margin-bottom:14px;">⚠️ Danger Zone</div>
+            <button class="btn btn-danger w-full" onclick="confirmSignOut()">
+              <i class="fa fa-sign-out-alt"></i> Sign Out
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit form -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+
+          <div class="card anim-fade-up" style="animation-delay:.05s;">
+            <div class="card-ph"><span style="font-weight:700;">Personal Information</span></div>
+            <div class="card-p">
+              <form onsubmit="saveProfile(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="form-group">
+                    <label class="form-label">First Name</label>
+                    <input type="text" id="p-first" class="form-input" placeholder="First name"/>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" id="p-last" class="form-input" placeholder="Last name"/>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Username</label>
+                  <input type="text" id="p-username" class="form-input" placeholder="username"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Bio</label>
+                  <textarea id="p-bio" class="form-textarea" placeholder="Tell us about yourself…"></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Timezone</label>
+                  <select id="p-timezone" class="form-select">
+                    <option value="UTC">UTC</option>
+                    <option value="Asia/Manila">Asia/Manila (PHT +8)</option>
+                    <option value="America/New_York">America/New_York (EST)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                    <option value="Europe/London">Europe/London (GMT)</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo (JST +9)</option>
+                    <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btn-save-profile">
+                  <i class="fa fa-save"></i> Save Changes
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Appearance -->
+          <div class="card anim-fade-up" style="animation-delay:.1s;">
+            <div class="card-ph"><span style="font-weight:700;">Appearance</span></div>
+            <div class="card-p">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-hover);border-radius:10px;">
+                <div>
+                  <div style="font-weight:600;font-size:.875rem;">Dark Mode</div>
+                  <div style="font-size:.75rem;color:var(--text-muted);">Switch between dark and light theme</div>
+                </div>
+                <button onclick="toggleTheme(); updateThemeToggle()" id="theme-toggle-btn"
+                  style="width:48px;height:26px;border-radius:99px;border:none;cursor:pointer;position:relative;transition:background .2s;background:var(--accent);">
+                  <div id="theme-knob" style="width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:3px;transition:left .2s;left:25px;"></div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Categories -->
+          <div class="card anim-fade-up" style="animation-delay:.12s;">
+            <div class="card-ph" style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-weight:700;">Categories</span>
+              <button class="btn btn-primary btn-sm" onclick="openCategoryModal()"><i class="fa fa-plus"></i> Add</button>
+            </div>
+            <div style="padding:12px;" id="categories-list">
+              <div class="skeleton" style="height:36px;border-radius:8px;margin-bottom:8px;"></div>
+              <div class="skeleton" style="height:36px;border-radius:8px;"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay" id="cat-modal-overlay" onclick="closeCatModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">New Category</span>
+      <button class="btn btn-ghost btn-icon btn-sm" onclick="closeCatModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" id="cat-name" class="form-input" placeholder="e.g. Health, Work…"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Icon</label>
+          <input type="text" id="cat-icon" class="form-input" placeholder="🎯" maxlength="2" style="font-size:1.3rem;text-align:center;"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <input type="color" id="cat-color" value="#6366f1" style="width:100%;height:42px;border:none;border-radius:8px;cursor:pointer;background:none;"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCatModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCategory()"><i class="fa fa-check"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function loadProfile() {
+  if (!await requireAuth()) return;
+  try {
+    const p = await API.profile();
+    fillProfile(p);
+    loadCategories();
+  } catch(e) {
+    showToast('Failed to load profile', 'error');
+  }
+}
+
+function fillProfile(p) {
+  const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || p.username;
+  document.getElementById('profile-name').textContent  = name;
+  document.getElementById('profile-email').textContent = p.email;
+  document.getElementById('profile-level').textContent = 'Level ' + p.level;
+  document.getElementById('profile-xp').textContent    = p.xp_points + ' XP';
+  document.getElementById('p-total').textContent       = p.total_habits_completed;
+  document.getElementById('p-streak').textContent      = p.longest_streak + 'd';
+  document.getElementById('p-score').textContent       = p.productivity_score;
+
+  // XP bar
+  const lp = p.level_progress;
+  document.getElementById('xp-bar').style.width         = lp.percentage + '%';
+  document.getElementById('xp-progress-text').textContent = lp.level_xp + ' / ' + lp.needed_xp + ' XP';
+
+  // Avatar
+  const av = document.getElementById('profile-avatar');
+  if (p.avatar_url) av.innerHTML = `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover;"/>`;
+  else av.textContent = (p.first_name || p.username || '?')[0].toUpperCase();
+
+  // Form
+  document.getElementById('p-first').value    = p.first_name || '';
+  document.getElementById('p-last').value     = p.last_name  || '';
+  document.getElementById('p-username').value = p.username   || '';
+  document.getElementById('p-bio').value      = p.bio        || '';
+  document.getElementById('p-timezone').value = p.timezone   || 'UTC';
+
+  // Sidebar
+  document.getElementById('sidebar-username').textContent = name.trim() || p.username;
+  document.getElementById('sidebar-level').textContent    = 'Level ' + p.level + ' · ' + p.xp_points + ' XP';
+  const sav = document.getElementById('sidebar-avatar');
+  if (p.avatar_url) sav.innerHTML = `<img src="${p.avatar_url}" alt=""/>`;
+  else sav.textContent = (p.first_name || p.username || '?')[0].toUpperCase();
+}
+
+async function saveProfile(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-profile');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const updated = await API.updateProfile({
+      first_name: document.getElementById('p-first').value,
+      last_name:  document.getElementById('p-last').value,
+      username:   document.getElementById('p-username').value,
+      bio:        document.getElementById('p-bio').value,
+      timezone:   document.getElementById('p-timezone').value,
+    });
+    fillProfile(updated);
+    showToast('Profile saved!', 'success');
+  } catch(e) {
+    showToast(e.message || 'Failed to save', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-save"></i> Save Changes';
+  }
+}
+
+function previewAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('profile-avatar').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;"/>`;
+  };
+  reader.readAsDataURL(file);
+  showToast('Avatar preview updated (upload to Supabase Storage to persist)', 'info');
+}
+
+async function loadCategories() {
+  try {
+    const cats = await API.categories.list();
+    const list = document.getElementById('categories-list');
+    if (!cats.length) {
+      list.innerHTML = `<p style="font-size:.8rem;color:var(--text-muted);text-align:center;padding:12px;">No categories yet.</p>`;
+      return;
+    }
+    list.innerHTML = cats.map(c => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;margin-bottom:6px;background:var(--bg-hover);">
+        <div style="width:28px;height:28px;border-radius:6px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:1rem;">${c.icon}</div>
+        <span style="flex:1;font-size:.875rem;font-weight:500;">${c.name}</span>
+        <span style="font-size:.72rem;color:var(--text-muted);">${c.habit_count} habits</span>
+        <button class="btn btn-ghost btn-icon btn-sm" onclick="deleteCategory('${c.id}')" title="Delete" style="color:var(--red);">
+          <i class="fa fa-trash" style="font-size:.7rem;"></i>
+        </button>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+async function deleteCategory(id) {
+  if (!confirm('Delete this category?')) return;
+  try {
+    await API.categories.delete(id);
+    showToast('Category deleted', 'info');
+    loadCategories();
+  } catch(e) {
+    showToast('Failed to delete', 'error');
+  }
+}
+
+function openCategoryModal() { document.getElementById('cat-modal-overlay').classList.add('open'); }
+function closeCatModal(e) {
+  if (e && e.target !== document.getElementById('cat-modal-overlay')) return;
+  document.getElementById('cat-modal-overlay').classList.remove('open');
+}
+
+async function saveCategory() {
+  const name  = document.getElementById('cat-name').value.trim();
+  const icon  = document.getElementById('cat-icon').value.trim() || '⭐';
+  const color = document.getElementById('cat-color').value;
+  if (!name) { showToast('Enter a category name', 'error'); return; }
+  try {
+    await API.categories.create({ name, icon, color });
+    showToast('Category created!', 'success');
+    closeCatModal();
+    loadCategories();
+  } catch(e) {
+    showToast('Failed to create', 'error');
+  }
+}
+
+function updateThemeToggle() {
+  const dark  = document.documentElement.getAttribute('data-theme') === 'dark';
+  const btn   = document.getElementById('theme-toggle-btn');
+  const knob  = document.getElementById('theme-knob');
+  btn.style.background  = dark ? 'var(--accent)' : '#d1d5db';
+  knob.style.left       = dark ? '25px' : '3px';
+}
+
+function confirmSignOut() {
+  if (confirm('Are you sure you want to sign out?')) Auth.signOut();
+}
+
+updateThemeToggle();
+const _orig = window.toggleTheme;
+window.toggleTheme = () => { _orig(); updateThemeToggle(); };
+
+loadProfile();
+</script>
+{% endblock %}
